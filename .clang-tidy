@@ -4,7 +4,6 @@ Checks: '-*,
   concurrency-*,
   misc-*,
   performance-*,
-  modernize-*,
   -misc-unused-parameters'
 HeaderFileExtensions:
   - h
