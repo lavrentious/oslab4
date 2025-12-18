@@ -1,0 +1,13 @@
+{
+  "C_Cpp.intelliSenseEngine": "disabled",
+  "clangd.path": "/usr/bin/clangd",
+  "C_Cpp.clang_format_path": "/usr/bin/clang-format",
+  "C_Cpp.codeAnalysis.clangTidy.path": "/usr/bin/clang-tidy",
+  "editor.defaultFormatter": "xaver.clang-format",
+  "[cpp]": {
+    "editor.defaultFormatter": "xaver.clang-format"
+  },
+  "[c]": {
+    "editor.defaultFormatter": "xaver.clang-format"
+  }
+}

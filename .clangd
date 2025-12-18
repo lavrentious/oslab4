@@ -2,3 +2,20 @@ InlayHints:
   Designators: No
   Enabled: No
   DeducedTypes: No
+CompileFlags:
+  Add:
+    - -I/usr/src/linux-headers-6.17.0-8-generic/include
+    - -I/usr/src/linux-headers-6.17.0-8-generic/arch/arm64/include
+    - -I/usr/src/linux-headers-6.17.0-8-generic/arch/arm64/include/generated
+    - -I/usr/src/linux-headers-6.17.0-8-generic/arch/arm64/include/uapi
+    - -I/usr/src/linux-headers-6.17.0-8-generic/include/uapi
+    - -I/usr/src/linux-headers-6.17.0-8-generic/include/generated/uapi
+
+    - -D__KERNEL__
+    - -DMODULE
+    - -D__KBUILD_MODNAME=\"vtfs\"
+
+    # - -std=gnu11
+
+    - -Wno-unused-command-line-argument
+    - -Wno-unknown-warning-option
