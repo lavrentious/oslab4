@@ -47,4 +47,8 @@ struct dentry* vtfs_mkdir(
 
 int vtfs_rmdir(struct inode* parent_inode, struct dentry* child_dentry);
 
+ssize_t vtfs_read(struct file* filp, char __user* buffer, size_t len, loff_t* offset);
+
+ssize_t vtfs_write(struct file* filp, const char __user* buffer, size_t len, loff_t* offset);
+
 #endif
