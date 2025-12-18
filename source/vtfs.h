@@ -41,4 +41,10 @@ struct inode* vtfs_get_inode(
     struct super_block* sb, const struct inode* dir, umode_t mode, int i_ino
 );
 
+struct dentry* vtfs_mkdir(
+    struct mnt_idmap* idmap, struct inode* parent_inode, struct dentry* child_dentry, umode_t mode
+);
+
+int vtfs_rmdir(struct inode* parent_inode, struct dentry* child_dentry);
+
 #endif
