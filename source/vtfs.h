@@ -53,4 +53,6 @@ ssize_t vtfs_read(struct file* filp, char __user* buffer, size_t len, loff_t* of
 
 ssize_t vtfs_write(struct file* filp, const char __user* buffer, size_t len, loff_t* offset);
 
+int vtfs_link(struct dentry* old_dentry, struct inode* parent_inode, struct dentry* new_dentry);
+
 #endif

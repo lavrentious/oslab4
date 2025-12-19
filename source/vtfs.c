@@ -21,6 +21,7 @@ struct inode_operations vtfs_inode_ops = {
     .unlink = vtfs_unlink,
     .mkdir = vtfs_mkdir,
     .rmdir = vtfs_rmdir,
+    .link = vtfs_link,
 };
 
 struct file_operations vtfs_dir_ops = {
@@ -29,7 +30,7 @@ struct file_operations vtfs_dir_ops = {
 
 struct file_operations vtfs_file_ops = {
     .open = vtfs_open,
-    .release=vtfs_release,
+    .release = vtfs_release,
     .read = vtfs_read,
     .write = vtfs_write,
 };
@@ -90,6 +91,8 @@ int vtfs_fill_super(struct super_block* sb, void* data, int silent) {
 
   inode->i_op = &vtfs_inode_ops;
   inode->i_fop = &vtfs_dir_ops;
+  inode->i_size = meta.size;
+  set_nlink(inode, meta.nlink);
 
   sb->s_root = d_make_root(inode);
   if (sb->s_root == NULL) {
@@ -113,7 +116,6 @@ struct inode* vtfs_get_inode(
       inode->i_fop = &vtfs_dir_ops;
     else if (S_ISREG(mode)) {
       inode->i_fop = &vtfs_file_ops;
-      inode->i_size = 0;
     }
 
     inode->i_mode = mode | 0777;
@@ -142,6 +144,8 @@ struct dentry* vtfs_lookup(
     return ERR_PTR(-ENOMEM);
   }
 
+  inode->i_size = meta.size;
+  set_nlink(inode, meta.nlink);
   d_add(child_dentry, inode);
   return NULL;
 }
@@ -211,13 +215,17 @@ int vtfs_create(
   LOG("vtfs_create called! parent_inode=%lu, name=%s\n", parent_inode->i_ino, name);
 
   err = vtfs_storage_create_file(parent_inode->i_ino, name, mode, &meta);
-  if (err)
+  if (err) {
     return err;
+  }
 
   struct inode* inode = vtfs_get_inode(parent_inode->i_sb, NULL, meta.mode, (int)meta.ino);
-  if (!inode)
+  if (!inode) {
     return -ENOMEM;
+  }
 
+  inode->i_size = meta.size;
+  set_nlink(inode, meta.nlink);
   d_add(child_dentry, inode);
   return 0;
 }
@@ -243,7 +251,11 @@ struct dentry* vtfs_mkdir(
   if (!inode)
     return ERR_PTR(-ENOMEM);
 
+  inode->i_size = meta.size;
+  set_nlink(inode, meta.nlink);
   d_instantiate(child_dentry, inode);
+  inc_nlink(parent_inode);
+  set_nlink(inode, meta.nlink);
   return NULL;
 }
 
@@ -281,6 +293,9 @@ ssize_t vtfs_write(struct file* filp, const char __user* buffer, size_t len, lof
   if (!len)
     return 0;
 
+  if (filp->f_flags & O_APPEND)
+    *offset = filp->f_inode->i_size;
+
   char* kbuf = memdup_user(buffer, len);
   if (IS_ERR(kbuf))
     return PTR_ERR(kbuf);
@@ -295,6 +310,22 @@ ssize_t vtfs_write(struct file* filp, const char __user* buffer, size_t len, lof
   *offset += written;
   filp->f_inode->i_size = new_size;
   return written;
+}
+
+int vtfs_link(struct dentry* old_dentry, struct inode* parent_inode, struct dentry* new_dentry) {
+  struct inode* old_inode = d_inode(old_dentry);
+  struct vtfs_node_meta meta;
+  int err =
+      vtfs_storage_link(parent_inode->i_ino, new_dentry->d_name.name, old_inode->i_ino, &meta);
+  if (err) {
+    return err;
+  }
+
+  ihold(old_inode);
+  d_instantiate(new_dentry, old_inode);
+  old_inode->i_size = meta.size;
+  set_nlink(old_inode, meta.nlink);
+  return 0;
 }
 
 module_init(vtfs_init);
