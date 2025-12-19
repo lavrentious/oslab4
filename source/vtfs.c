@@ -29,6 +29,7 @@ struct file_operations vtfs_dir_ops = {
 
 struct file_operations vtfs_file_ops = {
     .open = vtfs_open,
+    .release=vtfs_release,
     .read = vtfs_read,
     .write = vtfs_write,
 };
@@ -188,6 +189,11 @@ int vtfs_iterate(struct file* filp, struct dir_context* ctx) {
 
 int vtfs_open(struct inode* inode, struct file* filp) {
   LOG("vtfs_open called for inode %lu\n", inode->i_ino);
+  return 0;
+}
+
+int vtfs_release(struct inode* inode, struct file* filp) {
+  LOG("vtfs_release called for inode %lu\n", inode->i_ino);
   return 0;
 }
 

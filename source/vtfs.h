@@ -29,6 +29,8 @@ int vtfs_iterate(struct file* filp, struct dir_context* ctx);
 
 int vtfs_open(struct inode* inode, struct file* filp);
 
+int vtfs_release(struct inode* inode, struct file* filp);
+
 struct dentry* vtfs_mount(
     struct file_system_type* fs_type, int flags, const char* token, void* data
 );
