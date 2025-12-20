@@ -27,7 +27,7 @@ int fill_request(
     return -ENOMEM;
   }
 
-  strcpy(request_buffer, "GET /api/");
+  strcpy(request_buffer, "GET /");
   strcat(request_buffer, method);
 
   strcat(request_buffer, "?token=");

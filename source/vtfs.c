@@ -125,6 +125,7 @@ struct inode* vtfs_get_inode(
 }
 
 void vtfs_kill_sb(struct super_block* sb) {
+  kill_litter_super(sb);
   printk(KERN_INFO "vtfs super block is destroyed. Unmount successfully.\n");
 }
 
