@@ -167,11 +167,32 @@ int vtfs_storage_create_file(
   return 0;
 }
 
-/* --- stubs for now --- */
 int vtfs_storage_unlink(vtfs_ino_t parent, const char* name) {
-  return -ENOSYS;
+  if (!name) {
+    return -EINVAL;
+  }
+
+  char parent_buf[32];
+  char resp[512];
+
+  snprintf(parent_buf, sizeof(parent_buf), "%lu", parent);
+
+  LOG("unlinking file '%s' under parent=%lu\n", name, parent);
+
+  int64_t ret = vtfs_http_call(
+      VTFS_TOKEN, "unlink", resp, sizeof(resp), 2, "parent", parent_buf, "name", (char*)name
+  );
+
+  if (ret < 0) {
+    LOG("unlink HTTP call failed: %lld\n", ret);
+    return (int)ret;
+  }
+
+  LOG("file unlinked\n");
+  return 0;
 }
 
+/* --- stubs for now --- */
 int vtfs_storage_mkdir(
     vtfs_ino_t parent, const char* name, umode_t mode, struct vtfs_node_meta* out
 ) {
