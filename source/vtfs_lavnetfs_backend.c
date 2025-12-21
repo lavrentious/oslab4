@@ -305,11 +305,53 @@ ssize_t vtfs_storage_read_file(vtfs_ino_t ino, loff_t offset, size_t len, char* 
   return (ssize_t)payload_len;
 }
 
-/* --- stubs for now --- */
 ssize_t vtfs_storage_write_file(
     vtfs_ino_t ino, loff_t offset, const char* src, size_t len, loff_t* new_size
 ) {
-  return -ENOSYS;
+  if (!src || len == 0) {
+    return 0;
+  }
+  LOG("write file ino=%lu, offset=%lld, len=%zu\n", ino, offset, len);
+
+  char ino_buf[32], off_buf[32];
+  snprintf(ino_buf, sizeof(ino_buf), "%lu", ino);
+  snprintf(off_buf, sizeof(off_buf), "%llu", offset);
+
+  /* body = [data] */
+  size_t body_len = len;
+  char* body = kmalloc(body_len, GFP_KERNEL);
+  if (!body) {
+    return -ENOMEM;
+  }
+
+  memcpy(body, src, len);
+
+  char resp[32];  // written + new_size
+  int64_t ret = vtfs_http_call_with_body(
+      VTFS_TOKEN, "write", body, body_len, resp, sizeof(resp), 2, "ino", ino_buf, "offset", off_buf
+  );
+
+  LOG("ret=%lld\n", ret);
+
+  kfree(body);
+
+  if (ret < 0) {
+    return (ssize_t)ret;
+  }
+
+  uint64_t written = 0;
+  uint64_t size = 0;
+
+  memcpy(&written, resp, sizeof(uint64_t));
+  memcpy(&size, resp + sizeof(uint64_t), sizeof(uint64_t));
+
+  if (new_size) {
+    *new_size = (loff_t)size;
+  }
+
+  LOG("write_file ino=%lu off=%llu wrote=%llu new_size=%llu\n", ino, offset, written, size);
+
+  return (ssize_t)written;
 }
 
 int vtfs_storage_link(

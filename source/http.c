@@ -232,3 +232,106 @@ void encode(const char* src, char* dst) {
   }
   *dst = '\0';
 }
+
+int64_t vtfs_http_call_with_body(
+    const char* token,
+    const char* method,
+    const void* body,
+    size_t body_len,
+    char* response_buffer,
+    size_t response_size,
+    size_t arg_size,
+    ...
+) {
+  struct socket* sock;
+  int64_t error;
+
+  error = sock_create_kern(&init_net, AF_INET, SOCK_STREAM, IPPROTO_TCP, &sock);
+  if (error < 0)
+    return -1;
+
+  struct sockaddr_in s_addr = {
+      .sin_family = AF_INET,
+      .sin_addr = {.s_addr = in_aton(SERVER_IP)},
+      .sin_port = htons(SERVER_PORT),
+  };
+
+  error = kernel_connect(sock, (struct sockaddr*)&s_addr, sizeof(s_addr), 0);
+  if (error) {
+    sock_release(sock);
+    return -2;
+  }
+
+  /* -------- build headers -------- */
+
+  char* hdr = kzalloc(4096, GFP_KERNEL);
+  if (!hdr) {
+    sock_release(sock);
+    return -ENOMEM;
+  }
+
+  strcpy(hdr, "POST /");
+  strcat(hdr, method);
+  strcat(hdr, "?token=");
+  strcat(hdr, token);
+
+  va_list args;
+  va_start(args, arg_size);
+  for (size_t i = 0; i < arg_size; i++) {
+    strcat(hdr, "&");
+    strcat(hdr, va_arg(args, char*));
+    strcat(hdr, "=");
+    strcat(hdr, va_arg(args, char*));
+  }
+  va_end(args);
+
+  char len_buf[32];
+  snprintf(len_buf, sizeof(len_buf), "%zu", body_len);
+
+  strcat(hdr, " HTTP/1.1\r\nHost: ");
+  strcat(hdr, SERVER_IP);
+  strcat(hdr, "\r\nContent-Type: application/octet-stream\r\n");
+  strcat(hdr, "Content-Length: ");
+  strcat(hdr, len_buf);
+  strcat(hdr, "\r\nConnection: close\r\n\r\n");
+
+  /* -------- send headers + body -------- */
+
+  struct kvec vecs[2] = {
+      {        .iov_base = hdr, .iov_len = strlen(hdr)},
+      {.iov_base = (void*)body,    .iov_len = body_len},
+  };
+
+  struct msghdr msg = {};
+  error = kernel_sendmsg(sock, &msg, vecs, 2, vecs[0].iov_len + body_len);
+  kfree(hdr);
+
+  if (error < 0) {
+    sock_release(sock);
+    return -3;
+  }
+
+  /* -------- receive response -------- */
+
+  size_t raw_size = response_size + 1024;
+  char* raw = kmalloc(raw_size, GFP_KERNEL);
+  if (!raw) {
+    sock_release(sock);
+    return -ENOMEM;
+  }
+
+  int read_bytes = receive_all(sock, raw, raw_size);
+
+  kernel_sock_shutdown(sock, SHUT_RDWR);
+  sock_release(sock);
+
+  if (read_bytes < 0) {
+    kfree(raw);
+    return -4;
+  }
+
+  error = parse_http_response(raw, read_bytes, response_buffer, response_size);
+  kfree(raw);
+
+  return error;
+}
