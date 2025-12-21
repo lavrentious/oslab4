@@ -192,17 +192,73 @@ int vtfs_storage_unlink(vtfs_ino_t parent, const char* name) {
   return 0;
 }
 
-/* --- stubs for now --- */
 int vtfs_storage_mkdir(
     vtfs_ino_t parent, const char* name, umode_t mode, struct vtfs_node_meta* out
 ) {
-  return -ENOSYS;
+  if (!name || !out) {
+    return -EINVAL;
+  }
+
+  char parent_buf[32];
+  char mode_buf[32];
+  char resp[512];
+
+  snprintf(parent_buf, sizeof(parent_buf), "%lu", parent);
+  snprintf(mode_buf, sizeof(mode_buf), "%u", mode);
+
+  LOG("creating directory '%s' under parent=%lu with mode=0%o\n", name, parent, mode);
+
+  int64_t ret = vtfs_http_call(
+      VTFS_TOKEN,
+      "mkdir",
+      resp,
+      sizeof(resp),
+      3,
+      "parent",
+      parent_buf,
+      "name",
+      (char*)name,
+      "mode",
+      mode_buf
+  );
+
+  if (ret < 0) {
+    LOG("mkdir HTTP call failed: %lld\n", ret);
+    return (int)ret;
+  }
+
+  memcpy(out, resp, sizeof(*out));
+
+  LOG("dir created: ino=%lu name=%s\n", out->ino, name);
+  return 0;
 }
 
 int vtfs_storage_rmdir(vtfs_ino_t parent, const char* name) {
-  return -ENOSYS;
+  if (!name) {
+    return -EINVAL;
+  }
+
+  char parent_buf[32];
+  char resp[512];
+
+  snprintf(parent_buf, sizeof(parent_buf), "%lu", parent);
+
+  LOG("rmdir dir '%s' under parent=%lu\n", name, parent);
+
+  int64_t ret = vtfs_http_call(
+      VTFS_TOKEN, "rmdir", resp, sizeof(resp), 2, "parent", parent_buf, "name", (char*)name
+  );
+
+  if (ret < 0) {
+    LOG("rmdir HTTP call failed: %lld\n", ret);
+    return (int)ret;
+  }
+
+  LOG("dir removed\n");
+  return 0;
 }
 
+/* --- stubs for now --- */
 ssize_t vtfs_storage_read_file(vtfs_ino_t ino, loff_t offset, size_t len, char* dst) {
   return -ENOSYS;
 }
