@@ -258,11 +258,54 @@ int vtfs_storage_rmdir(vtfs_ino_t parent, const char* name) {
   return 0;
 }
 
-/* --- stubs for now --- */
 ssize_t vtfs_storage_read_file(vtfs_ino_t ino, loff_t offset, size_t len, char* dst) {
-  return -ENOSYS;
+  if (!dst || len == 0)
+    return -EINVAL;
+
+  char ino_buf[32], offset_buf[32], len_buf[32];
+  snprintf(ino_buf, sizeof(ino_buf), "%lu", ino);
+  snprintf(offset_buf, sizeof(offset_buf), "%llu", offset);
+  snprintf(len_buf, sizeof(len_buf), "%zu", len);
+
+  char resp[8192];
+  int64_t ret = vtfs_http_call(
+      VTFS_TOKEN,
+      "read",
+      resp,
+      sizeof(resp),
+      3,
+      "ino",
+      ino_buf,
+      "offset",
+      offset_buf,
+      "length",
+      len_buf
+  );
+
+  if (ret < 0) {
+    return (int)ret;
+  }
+
+  uint64_t payload_len = 0;
+  memcpy(&payload_len, resp, sizeof(payload_len));
+
+  LOG("payload_len=%llu\n", payload_len);
+
+  if (payload_len == 0) {
+    LOG("EOF reached\n");
+    return 0;
+  }
+
+  if (payload_len > len)
+    payload_len = len;
+
+  memcpy(dst, resp + 8, payload_len);
+  LOG("read_file ino=%lu offset=%llu read=%llu bytes\n", ino, offset, payload_len);
+
+  return (ssize_t)payload_len;
 }
 
+/* --- stubs for now --- */
 ssize_t vtfs_storage_write_file(
     vtfs_ino_t ino, loff_t offset, const char* src, size_t len, loff_t* new_size
 ) {
