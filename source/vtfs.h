@@ -55,4 +55,6 @@ ssize_t vtfs_write(struct file* filp, const char __user* buffer, size_t len, lof
 
 int vtfs_link(struct dentry* old_dentry, struct inode* parent_inode, struct dentry* new_dentry);
 
+int vtfs_setattr(struct mnt_idmap* idmap, struct dentry* dentry, struct iattr* attr);
+
 #endif

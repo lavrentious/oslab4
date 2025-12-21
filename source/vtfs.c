@@ -22,6 +22,7 @@ struct inode_operations vtfs_inode_ops = {
     .mkdir = vtfs_mkdir,
     .rmdir = vtfs_rmdir,
     .link = vtfs_link,
+    .setattr = vtfs_setattr
 };
 
 struct file_operations vtfs_dir_ops = {
@@ -326,6 +327,31 @@ int vtfs_link(struct dentry* old_dentry, struct inode* parent_inode, struct dent
   d_instantiate(new_dentry, old_inode);
   old_inode->i_size = meta.size;
   set_nlink(old_inode, meta.nlink);
+  return 0;
+}
+
+int vtfs_setattr(struct mnt_idmap* idmap, struct dentry* dentry, struct iattr* attr) {
+  struct inode* inode = d_inode(dentry);
+  int err;
+
+  err = setattr_prepare(idmap, dentry, attr);
+  if (err)
+    return err;
+
+  if (attr->ia_valid & ATTR_SIZE) {
+    loff_t new_size = attr->ia_size;
+
+    LOG("truncate inode=%lu to size=%lld\n", inode->i_ino, new_size);
+
+    err = vtfs_storage_truncate(inode->i_ino, new_size);
+    if (err)
+      return err;
+
+    inode->i_size = new_size;
+  }
+
+  setattr_copy(idmap, inode, attr);
+  mark_inode_dirty(inode);
   return 0;
 }
 

@@ -359,3 +359,25 @@ int vtfs_storage_link(
 ) {
   return -ENOSYS;
 }
+
+int vtfs_storage_truncate(vtfs_ino_t ino, loff_t size) {
+  char ino_buf[32];
+  char size_buf[32];
+  char resp[512];
+
+  snprintf(ino_buf, sizeof(ino_buf), "%lu", ino);
+  snprintf(size_buf, sizeof(size_buf), "%lld", size);
+
+  LOG("truncating file ino=%lu to size=%lld\n", ino, size);
+
+  int64_t ret = vtfs_http_call(
+      VTFS_TOKEN, "truncate", resp, sizeof(resp), 2, "ino", ino_buf, "size", size_buf
+  );
+
+  if (ret < 0) {
+    return (int)ret;
+  }
+
+  LOG("file truncated: ino=%lu size=%lld\n", ino, size);
+  return 0;
+}

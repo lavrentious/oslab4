@@ -56,4 +56,6 @@ int vtfs_storage_link(
     vtfs_ino_t parent, const char* name, vtfs_ino_t target_ino, struct vtfs_node_meta* out
 );
 
+int vtfs_storage_truncate(vtfs_ino_t ino, loff_t size);
+
 #endif
