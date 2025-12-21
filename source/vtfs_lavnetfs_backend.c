@@ -357,7 +357,41 @@ ssize_t vtfs_storage_write_file(
 int vtfs_storage_link(
     vtfs_ino_t parent, const char* name, vtfs_ino_t target_ino, struct vtfs_node_meta* out
 ) {
-  return -ENOSYS;
+  if (!name || !out) {
+    return -EINVAL;
+  }
+
+  char parent_buf[32];
+  char ino_buf[32];
+  char resp[512];
+
+  snprintf(parent_buf, sizeof(parent_buf), "%lu", parent);
+  snprintf(ino_buf, sizeof(ino_buf), "%lu", target_ino);
+
+  LOG("creating a link for ino=%lu under name=%s, parent=%lu\n", target_ino, name, parent);
+
+  int64_t ret = vtfs_http_call(
+      VTFS_TOKEN,
+      "link",
+      resp,
+      sizeof(resp),
+      3,
+      "parent",
+      parent_buf,
+      "name",
+      (char*)name,
+      "ino",
+      ino_buf
+  );
+
+  if (ret < 0) {
+    return (int)ret;
+  }
+
+  memcpy(out, resp, sizeof(*out));
+
+  LOG("link created: ino=%lu name=%s\n", out->ino, name);
+  return 0;
 }
 
 int vtfs_storage_truncate(vtfs_ino_t ino, loff_t size) {
