@@ -156,41 +156,47 @@ int vtfs_iterate(struct file* filp, struct dir_context* ctx) {
   struct dentry* dentry = filp->f_path.dentry;
   struct inode* inode = dentry->d_inode;
   vtfs_ino_t ino = inode->i_ino;
-  unsigned long pos = filp->f_pos;
+  unsigned long pos = ctx->pos;
 
+  // "."
   if (pos == 0) {
     if (!dir_emit(ctx, ".", 1, ino, DT_DIR))
       return 0;
-    ctx->pos = ++pos;
-    filp->f_pos = pos;
+    ctx->pos = 1;
+    pos = 1;
   }
 
+  // ".."
   if (pos == 1) {
     ino_t parent_ino = dentry->d_parent->d_inode->i_ino;
     if (!dir_emit(ctx, "..", 2, parent_ino, DT_DIR))
       return 0;
-    ctx->pos = ++pos;
-    filp->f_pos = pos;
+    ctx->pos = 2;
+    pos = 2;
   }
 
-  if (pos >= 2) {
-    unsigned long off = pos - 2;
-    while (1) {
-      struct vtfs_dirent ent;
-      int err = vtfs_storage_iterate_dir(ino, &off, &ent);
-      if (err)
-        break;
+  unsigned long off = pos - 2;
 
-      unsigned char dtype = (ent.type == VTFS_NODE_DIR) ? DT_DIR : DT_REG;
+  while (1) {
+    struct vtfs_dirent ent;
+    int ret = vtfs_storage_iterate_dir(ino, &off, &ent);
 
-      if (!dir_emit(ctx, ent.name, strlen(ent.name), ent.ino, dtype))
-        break;
-
-      ctx->pos = filp->f_pos = off + 2;
+    if (ret < 0) {
+      LOG("iterate_dir failed: %d\n", ret);
+      return ret;
     }
-  }
 
-  return 0;
+    if (ret > 0) {
+      return 0;
+    }
+
+    unsigned char dtype = (ent.type == VTFS_NODE_DIR) ? DT_DIR : DT_REG;
+
+    if (!dir_emit(ctx, ent.name, strlen(ent.name), ent.ino, dtype))
+      return 0;
+
+    ctx->pos = off + 2;
+  }
 }
 
 int vtfs_open(struct inode* inode, struct file* filp) {
