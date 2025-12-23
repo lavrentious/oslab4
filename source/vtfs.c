@@ -344,6 +344,7 @@ int vtfs_setattr(struct mnt_idmap* idmap, struct dentry* dentry, struct iattr* a
   if (err)
     return err;
 
+  // --- truncate ---
   if (attr->ia_valid & ATTR_SIZE) {
     loff_t new_size = attr->ia_size;
 
@@ -354,6 +355,19 @@ int vtfs_setattr(struct mnt_idmap* idmap, struct dentry* dentry, struct iattr* a
       return err;
 
     inode->i_size = new_size;
+  }
+
+  // --- chmod ---
+  if (attr->ia_valid & ATTR_MODE) {
+    umode_t new_mode = attr->ia_mode & 0777;
+
+    LOG("chmod inode=%lu mode=%o\n", inode->i_ino, new_mode);
+
+    err = vtfs_storage_chmod(inode->i_ino, new_mode);
+    if (err)
+      return err;
+
+    inode->i_mode = (inode->i_mode & S_IFMT) | new_mode;
   }
 
   setattr_copy(idmap, inode, attr);

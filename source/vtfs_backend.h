@@ -58,4 +58,6 @@ int vtfs_storage_link(
 
 int vtfs_storage_truncate(vtfs_ino_t ino, loff_t size);
 
+int vtfs_storage_chmod(vtfs_ino_t ino, umode_t mode);
+
 #endif

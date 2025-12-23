@@ -415,3 +415,16 @@ int vtfs_storage_truncate(vtfs_ino_t ino, loff_t size) {
   LOG("file truncated: ino=%lu size=%lld\n", ino, size);
   return 0;
 }
+
+int vtfs_storage_chmod(vtfs_ino_t ino, umode_t mode) {
+  char ino_buf[32], mode_buf[32];
+  char resp[64];
+
+  snprintf(ino_buf, sizeof(ino_buf), "%lu", ino);
+  snprintf(mode_buf, sizeof(mode_buf), "%u", mode & 0777);
+
+  int64_t ret =
+      vtfs_http_call(VTFS_TOKEN, "chmod", resp, sizeof(resp), 2, "ino", ino_buf, "mode", mode_buf);
+
+  return (ret < 0) ? (int)ret : 0;
+}
